@@ -22,7 +22,11 @@ class Feed extends Component {
     };
 
     componentDidMount() {
-        fetch("http://localhost:8080/feed/posts")
+        fetch("http://localhost:8080/feed/posts", {
+            headers: {
+                Authorization: "Bearer " + this.props.token,
+            },
+        })
             .then((res) => {
                 if (res.status !== 200) {
                     throw new Error("Failed to fetch user status.");
@@ -50,7 +54,11 @@ class Feed extends Component {
             page--;
             this.setState({ postPage: page });
         }
-        fetch("http://localhost:8080/feed/posts?page=" + page)
+        fetch("http://localhost:8080/feed/posts?page=" + page, {
+            headers: {
+                Authorization: "Bearer " + this.props.token,
+            },
+        })
             .then((res) => {
                 if (res.status !== 200) {
                     throw new Error("Failed to fetch posts.");
@@ -69,7 +77,11 @@ class Feed extends Component {
 
     statusUpdateHandler = (event) => {
         event.preventDefault();
-        fetch("URL")
+        fetch("URL", {
+            headers: {
+                Authorization: "Bearer " + this.props.token,
+            },
+        })
             .then((res) => {
                 if (res.status !== 200 && res.status !== 201) {
                     throw new Error("Can't update status!");
@@ -120,6 +132,9 @@ class Feed extends Component {
         fetch(url, {
             method: method,
             body: formData,
+            headers: {
+                Authorization: "Bearer " + this.props.token,
+            },
         })
             .then((res) => {
                 if (res.status !== 200 && res.status !== 201) {
@@ -172,6 +187,9 @@ class Feed extends Component {
         this.setState({ postsLoading: true });
         fetch("http://localhost:8080/feed/post/" + postId, {
             method: "DELETE",
+            headers: {
+                Authorization: "Bearer " + this.props.token,
+            },
         })
             .then((res) => {
                 if (res.status !== 200 && res.status !== 201) {

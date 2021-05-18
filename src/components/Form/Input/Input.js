@@ -14,7 +14,7 @@ const input = props => (
         type={props.type}
         id={props.id}
         required={props.required}
-        value={props.value}
+        value={props.value ? props.value : ''}
         placeholder={props.placeholder}
         onChange={e => props.onChange(props.id, e.target.value, e.target.files)}
         onBlur={props.onBlur}
