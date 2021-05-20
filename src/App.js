@@ -58,25 +58,30 @@ class App extends Component {
     loginHandler = (event, authData) => {
         event.preventDefault();
         this.setState({ authLoading: true });
-        fetch("http://localhost:8080/auth/login", {
+        const graphqlQuery = {
+            query: `
+                query {
+                    login(username: "${authData.email}", password: "${authData.password}") {
+                        token
+                        userId
+                    }
+                }               
+            `,
+        };
+        fetch("http://localhost:8080/graphql", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                username: authData.email,
-                password: authData.password,
-            }),
+            body: JSON.stringify(graphqlQuery),
         })
             .then((res) => {
-                if (res.status === 422) {
-                    throw new Error("Validation failed.");
-                }
-                if (res.status !== 200 && res.status !== 201) {
-                    console.log("Error!");
-                    throw new Error("Could not authenticate you!");
-                }
                 return res.json();
             })
             .then((resData) => {
+                if (resData.errors) {
+                    console.log(resData.errors);
+                    throw new Error("Login error.");
+                }
+
                 this.setState({
                     isAuth: true,
                     token: resData.token,
