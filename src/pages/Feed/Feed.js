@@ -22,21 +22,21 @@ class Feed extends Component {
     };
 
     componentDidMount() {
-        fetch("http://localhost:8080/feed/posts", {
-            headers: {
-                Authorization: "Bearer " + this.props.token,
-            },
-        })
-            .then((res) => {
-                if (res.status !== 200) {
-                    throw new Error("Failed to fetch user status.");
-                }
-                return res.json();
-            })
-            .then((resData) => {
-                this.setState({ status: resData.status });
-            })
-            .catch(this.catchError);
+        // fetch("http://localhost:8080/feed/posts", {
+        //     headers: {
+        //         Authorization: "Bearer " + this.props.token,
+        //     },
+        // })
+        //     .then((res) => {
+        //         if (res.status !== 200) {
+        //             throw new Error("Failed to fetch user status.");
+        //         }
+        //         return res.json();
+        //     })
+        //     .then((resData) => {
+        //         this.setState({ status: resData.status });
+        //     })
+        //     .catch(this.catchError);
 
         this.loadPosts();
     }
@@ -68,21 +68,44 @@ class Feed extends Component {
             page--;
             this.setState({ postPage: page });
         }
-        fetch("http://localhost:8080/feed/posts?page=" + page, {
+        const graphqlQuery = {
+            query: `
+                query {
+                    getPosts {
+                        _id
+                        title
+                        content
+                        imageUrl
+                        adder {
+                            _id
+                            name
+                            username
+                        }
+                        createdAt
+                        updatedAt
+                    }
+                }
+            `,
+        }
+        fetch("http://localhost:8080/graphql?page=" + page, {
             headers: {
-                Authorization: "Bearer " + this.props.token,
+                "Authorization": "Bearer " + this.props.token,
+                "Content-Type": "application/json",
             },
+            body: JSON.stringify(graphqlQuery),
+            method: 'POST'
         })
             .then((res) => {
-                if (res.status !== 200) {
-                    throw new Error("Failed to fetch posts.");
-                }
                 return res.json();
             })
             .then((resData) => {
+                if (resData.errors && resData.errors[0].status !== 200) {
+                    throw new Error("Failed to fetch posts.");
+                }
+                console.log(resData.data)
                 this.setState({
-                    posts: resData.posts,
-                    totalPosts: resData.totalItems,
+                    posts: resData.data.getPosts,
+                    totalPosts: resData.data.getPosts.length,
                     postsLoading: false,
                 });
             })
@@ -136,7 +159,26 @@ class Feed extends Component {
         formData.append("content", postData.content);
         formData.append("image", postData.image);
 
-        let url = "http://localhost:8080/feed/post";
+        const graphqlQuery = {
+            query: `
+                mutation {
+                    addPost(addPostInputData: {title: "${postData.title}", content: "${postData.content}", imageUrl: "${postData.imageUrl}"}) {
+                        _id
+                        title
+                        content
+                        imageUrl
+                        adder {
+                            _id
+                            username
+                            name
+                        }
+                        createdAt
+                        updatedAt
+                    }
+                }  
+            `,
+        };
+        let url = "http://localhost:8080/graphql";
         let method = "POST";
         if (this.state.editPost) {
             method = "PUT";
@@ -145,24 +187,25 @@ class Feed extends Component {
 
         fetch(url, {
             method: method,
-            body: formData,
+            body: JSON.stringify(graphqlQuery),
             headers: {
+                "Content-Type": "application/json",
                 Authorization: "Bearer " + this.props.token,
             },
         })
             .then((res) => {
-                if (res.status !== 200 && res.status !== 201) {
-                    throw new Error("Creating or editing a post failed!");
-                }
                 return res.json();
             })
             .then((resData) => {
+                if (resData.errors) {
+                    throw new Error("Creating or editing a post failed!");
+                }
                 const post = {
-                    _id: resData.post._id,
-                    title: resData.post.title,
-                    content: resData.post.content,
-                    adder: resData.post.adder,
-                    addedAt: resData.post.createdAt,
+                    _id: resData.data.addPost._id,
+                    title: resData.data.addPost.title,
+                    content: resData.data.addPost.content,
+                    adder: resData.data.addPost.adder,
+                    addedAt: resData.data.addPost.createdAt,
                 };
                 this.setState((prevState) => {
                     let updatedPosts = [...prevState.posts];
