@@ -71,18 +71,21 @@ class Feed extends Component {
         const graphqlQuery = {
             query: `
                 query {
-                    getPosts {
-                        _id
-                        title
-                        content
-                        imageUrl
-                        adder {
+                    getPosts(page: ${page}) {
+                        posts {
                             _id
-                            name
-                            username
+                            title
+                            content
+                            imageUrl
+                            adder {
+                                _id
+                                name
+                                username
+                            }
+                            createdAt
+                            updatedAt
                         }
-                        createdAt
-                        updatedAt
+                        totalPosts                            
                     }
                 }
             `,
@@ -102,10 +105,9 @@ class Feed extends Component {
                 if (resData.errors && resData.errors[0].status !== 200) {
                     throw new Error("Failed to fetch posts.");
                 }
-                console.log(resData.data)
                 this.setState({
-                    posts: resData.data.getPosts,
-                    totalPosts: resData.data.getPosts.length,
+                    posts: resData.data.getPosts.posts,
+                    totalPosts: resData.data.getPosts.totalPosts,
                     postsLoading: false,
                 });
             })
@@ -273,7 +275,7 @@ class Feed extends Component {
 
     catchError = (error) => {
         this.setState({ error: error });
-    };
+    };    
 
     render() {
         return (
