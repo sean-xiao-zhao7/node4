@@ -14,24 +14,48 @@ class SinglePost extends Component {
 
     componentDidMount() {
         const postId = this.props.match.params.postId;
-        fetch("http://localhost:8080/feed/post/" + postId, {
+        const graphqlQuery = {
+            query: `
+                query {
+                    getPost(id: "${postId}") {
+                        _id
+                        title
+                        content
+                        imageUrl
+                        adder {
+                            _id
+                            username
+                            name
+                        }
+                        createdAt
+                        updatedAt
+                    }
+                }  
+            `,
+        };
+
+        fetch("http://localhost:8080/graphql", {
             headers: {
                 Authorization: "Bearer " + this.props.token,
+                "Content-Type": "application/json",
             },
+            body: JSON.stringify(graphqlQuery),
+            method: 'POST'
         })
             .then((res) => {
-                if (res.status !== 200) {
-                    throw new Error("Failed to fetch status");
-                }
                 return res.json();
             })
             .then((resData) => {
+                if (resData.errors && resData.errors[0].status !== 200) {
+                    throw new Error("Failed to fetch status");
+                }
+
                 this.setState({
-                    title: resData.post.title,
-                    author: resData.post.adder.name,
-                    date: new Date(resData.post.createdAt).toLocaleDateString("en-US"),
-                    content: resData.post.content,
-                    image: "http://localhost:8080/" + resData.post.imageUrl,
+                    title: resData.data.getPost.title,
+                    author: resData.data.getPost.adder.name,
+                    date: new Date(resData.data.getPost.createdAt).toLocaleDateString("en-US"),
+                    content: resData.data.getPost.content,
+                    image: "http://localhost:8080/" + resData.data.getPost.imageUrl,
                 });
             })
             .catch((err) => {

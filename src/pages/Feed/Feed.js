@@ -89,14 +89,14 @@ class Feed extends Component {
                     }
                 }
             `,
-        }
+        };
         fetch("http://localhost:8080/graphql?page=" + page, {
             headers: {
-                "Authorization": "Bearer " + this.props.token,
+                Authorization: "Bearer " + this.props.token,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(graphqlQuery),
-            method: 'POST'
+            method: "POST",
         })
             .then((res) => {
                 return res.json();
@@ -106,7 +106,12 @@ class Feed extends Component {
                     throw new Error("Failed to fetch posts.");
                 }
                 this.setState({
-                    posts: resData.data.getPosts.posts,
+                    posts: resData.data.getPosts.posts.map((p) => {
+                        return {
+                            ...p,
+                            imagePath: p.imageUrl,
+                        };
+                    }),
                     totalPosts: resData.data.getPosts.totalPosts,
                     postsLoading: false,
                 });
@@ -152,19 +157,30 @@ class Feed extends Component {
         this.setState({ isEditing: false, editPost: null });
     };
 
-    finishEditHandler = (postData) => {
+    finishEditHandler = async (postData) => {
         this.setState({
             editLoading: true,
         });
         const formData = new FormData();
-        formData.append("title", postData.title);
-        formData.append("content", postData.content);
         formData.append("image", postData.image);
+        if (this.state.editPost) {
+            formData.append("oldPath", this.state.editPost.imagePath);
+        }
+
+        const result = await fetch("http://localhost:8080/upload", {
+            method: "PUT",
+            headers: {
+                Authorization: "Bearer " + this.props.token,
+            },
+            body: formData,
+        });
+        const response = await result.json();
+        const imageUrl = response.path;        
 
         const graphqlQuery = {
             query: `
                 mutation {
-                    addPost(addPostInputData: {title: "${postData.title}", content: "${postData.content}", imageUrl: "${postData.imageUrl}"}) {
+                    addPost(addPostInputData: {title: "${postData.title}", content: "${postData.content}", imageUrl: "${imageUrl}"}) {
                         _id
                         title
                         content
@@ -202,12 +218,14 @@ class Feed extends Component {
                 if (resData.errors) {
                     throw new Error("Creating or editing a post failed!");
                 }
+
                 const post = {
                     _id: resData.data.addPost._id,
                     title: resData.data.addPost.title,
                     content: resData.data.addPost.content,
                     adder: resData.data.addPost.adder,
                     addedAt: resData.data.addPost.createdAt,
+                    imagePath: resData.data.addPost.imageUrl,
                 };
                 this.setState((prevState) => {
                     let updatedPosts = [...prevState.posts];
@@ -275,7 +293,7 @@ class Feed extends Component {
 
     catchError = (error) => {
         this.setState({ error: error });
-    };    
+    };
 
     render() {
         return (
@@ -323,19 +341,21 @@ class Feed extends Component {
                             lastPage={Math.ceil(this.state.totalPosts / 2)}
                             currentPage={this.state.postPage}
                         >
-                            {this.state.posts.map((post) => (
-                                <Post
-                                    key={post._id}
-                                    id={post._id}
-                                    author={post.adder.name}
-                                    date={new Date(post.createdAt).toLocaleDateString("en-US")}
-                                    title={post.title}
-                                    image={post.imageUrl}
-                                    content={post.content}
-                                    onStartEdit={this.startEditPostHandler.bind(this, post._id)}
-                                    onDelete={this.deletePostHandler.bind(this, post._id)}
-                                />
-                            ))}
+                            {this.state.posts.map((post) => {
+                                return (
+                                    <Post
+                                        key={post._id}
+                                        id={post._id}
+                                        author={post.adder.name}
+                                        date={new Date(post.createdAt).toLocaleDateString("en-US")}
+                                        title={post.title}
+                                        image={post.imageUrl}
+                                        content={post.content}
+                                        onStartEdit={this.startEditPostHandler.bind(this, post._id)}
+                                        onDelete={this.deletePostHandler.bind(this, post._id)}
+                                    />
+                                );
+                            })}
                         </Paginator>
                     )}
                 </section>
